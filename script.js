@@ -1,21 +1,24 @@
 import { Camera, drawCube } from "./render/index.js";
 import { Vector3 } from "./world/Vector3.js";
 import { VoxelMap } from "./world/voxelMap.js";
+import { loadTexture } from "./render/loadTexture.js";
 
 const canvas = document.querySelector("canvas");
 const ctx = canvas.getContext("2d");
 
-// Calculate FOV based on canvas dimensions and distance to canvas
-function calculateFOV(canvasHeight, distanceToCanvas) {
-	return 2 * Math.atan(canvasHeight / (2 * distanceToCanvas));
+function resizeCanvas() {
+	canvas.width = window.innerWidth;
+	canvas.height = window.innerHeight;
 }
 
-const camera = new Camera(new Vector3(10, 0, 10), canvas, 0, 0, calculateFOV(canvas.height, 1000));
-console.log(camera.fov);
+window.addEventListener("resize", resizeCanvas);
+resizeCanvas();
+
+const camera = new Camera(new Vector3(0, 0, 5), canvas, Math.PI / 6, Math.PI / 4);
 const voxelMap = new VoxelMap(10, 10, 10);
 
 window.addEventListener("keydown", (e) => {
-	const movementSpeed = 1; // Adjust as needed
+	const movementSpeed = 0.5; // Adjust as needed
 	const rotationSpeed = 0.1; // Adjust as needed
 
 	switch (e.key) {
@@ -56,16 +59,18 @@ window.addEventListener("keydown", (e) => {
 	}
 });
 
-function update() {}
+async function update() {
+	// Update logic can go here if needed
+}
 
-function render() {
+async function render(texture) {
 	ctx.clearRect(0, 0, canvas.width, canvas.height);
+
 	const voxels = [];
 	voxelMap.voxelMap.forEach((column, x) =>
 		column.forEach((row, y) =>
 			row.forEach((voxel, z) => {
 				if (!voxel) return;
-
 				const voxelPos = new Vector3(x, y, z);
 				voxels.push(voxelPos);
 			})
@@ -80,27 +85,31 @@ function render() {
 		.sort((a, b) => {
 			const AD = camera.position.distance(a);
 			const BD = camera.position.distance(b);
-
-			return AD - BD;
+			return BD - AD;
 		});
 
-	let drawn;
 	for (let voxel of sortedVoxels) {
-		drawCube({ voxel, camera }, ctx);
-		drawn = drawn || camera.projectPoint(voxel, true);
+		drawCube({ voxel, camera }, ctx, texture);
 	}
 
+	ctx.fillStyle = "black";
 	ctx.textAlign = "left";
-	ctx.font = "bold 50px monospace";
+	ctx.font = "bold 20px monospace";
 	ctx.textBaseline = "hanging";
 
-	ctx.fillText(`camera: ${camera.position}`, 0, 0);
-	ctx.fillText(`pitch:${camera.pitch.toPrecision(2)} yaw:${camera.yaw.toPrecision(2)}`, 0, 50);
-	ctx.fillText(`voxels: ${sortedVoxels.length}`, 0, 100);
-	ctx.fillText(`screen pos: ${JSON.stringify(drawn)}`, 0, 150);
+	ctx.fillText(`camera: ${camera.position.toString()}`, 0, 0);
+	ctx.fillText(`pitch: ${camera.pitch.toFixed(2)} yaw: ${camera.yaw.toFixed(2)}`, 0, 20);
+	ctx.fillText(`voxels: ${sortedVoxels.length}`, 0, 40); 
 }
 
-setInterval(() => {
-	update();
-	render();
-}, 16); // 60 frames per second
+async function main() {
+	const texture = await loadTexture("./textures/terrain.png");
+	const loop = () => {
+		update();
+		render(texture);
+		requestAnimationFrame(loop);
+	};
+	loop();
+}
+
+main();

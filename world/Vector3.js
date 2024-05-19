@@ -14,6 +14,10 @@ export class Vector3 {
 		return `x:${this.x.toPrecision(2)} y:${this.y.toPrecision(2)} z:${this.z.toPrecision(2)}`;
 	}
 
+	dot(v) {
+		return this.x * v.x + this.y * v.y + this.z * v.z;
+	}
+
 	/**
 	 * Adds two Vector3 objects together
 	 * @param {Vector3} v The vector to add

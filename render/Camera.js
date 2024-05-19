@@ -6,44 +6,43 @@ export class Camera {
 	 * @param {number} yaw
 	 * @param {number} pitch
 	 */
-	constructor(position, canvas, yaw, pitch, fov = 90) {
+	constructor(position, canvas, yaw, pitch) {
 		this.position = position;
 		this.yaw = yaw;
-		this.canvas = { width: canvas.width, height: canvas.height };
 		this.pitch = pitch;
-		this.fov = fov;
+		this.canvas = { width: canvas.width, height: canvas.height };
+		this.fov = Math.PI / 4;
+		this.near = 0.1;
+		this.far = 1000;
+		this.aspectRatio = this.canvas.width / this.canvas.height;
 	}
 
-	// Function to project 3D point to 2D screen coordinates
-	projectPoint(point3D, behind) {
-		const x = point3D.x - this.position.x;
-		const y = point3D.y - this.position.y;
-		const z = point3D.z - this.position.z;
+	projectPoint(point) {
+		const { x, y, z } = point;
 
-		// Apply camera rotation
-		const rotatedX = x * Math.cos(this.yaw) + z * Math.sin(this.yaw);
-		const rotatedZ = -x * Math.sin(this.yaw) + z * Math.cos(this.yaw);
+		const cosPitch = Math.cos(this.pitch);
+		const sinPitch = Math.sin(this.pitch);
+		const cosYaw = Math.cos(this.yaw);
+		const sinYaw = Math.sin(this.yaw);
 
-		// Apply camera pitch
-		const rotatedY = y * Math.cos(this.pitch) - rotatedZ * Math.sin(this.pitch);
+		const dx = x - this.position.x;
+		const dy = y - this.position.y;
+		const dz = z - this.position.z;
 
-		// Check if point is behind camera
-		if (rotatedY <= 0 && !behind) return null;
+		const cameraX = cosYaw * dx + sinYaw * dz;
+		const cameraY = sinPitch * (cosYaw * dz - sinYaw * dx) + cosPitch * dy;
+		const cameraZ = cosPitch * (cosYaw * dz - sinYaw * dx) - sinPitch * dy;
 
-		// Project onto 2D screen
-		const projectedX = rotatedX / rotatedY;
-		const projectedZ = rotatedZ / rotatedY;
+		if (cameraZ < this.near) {
+			return null;
+		}
 
-		// Apply FOV
-		const fovFactor = Math.tan(this.fov / 2);
-		const projectedXFinal = projectedX / fovFactor;
-		const projectedZFinal = projectedZ / fovFactor;
+		const scale = this.fov / cameraZ;
+		const projectedX = cameraX * scale * this.aspectRatio;
+		const projectedY = cameraY * scale;
 
-		// Scale to canvas dimensions
-		const scaleX = this.canvas.width / 2;
-		const scaleY = this.canvas.height / 2;
-		const screenX = projectedXFinal * scaleX + scaleX;
-		const screenY = projectedZFinal * scaleY + scaleY;
+		const screenX = projectedX * (this.canvas.width / 2) + this.canvas.width / 2;
+		const screenY = -projectedY * (this.canvas.height / 2) + this.canvas.height / 2;
 
 		return { x: screenX, y: screenY };
 	}
